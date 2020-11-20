@@ -25,6 +25,28 @@
 #include "settings.h"
 #include "common.h"
 
+static char mq_request[80];
+static char mq_response[80];
+
+static void create_msg_queue() {
+    pid_t               processID;      /* Process ID from fork() */
+    mqd_t               mq_fd_request;
+    mqd_t               mq_fd_response;
+    MQ_REQUEST_MESSAGE  req;
+    MQ_RESPONSE_MESSAGE rsp;
+    struct mq_attr      attr;
+
+    //sprintf (mq_request, "/mq_request_%s_%d", STUDENT_NAME, getpid());
+    //sprintf (mq_response, "/mq_response_%s_%d", STUDENT_NAME, getpid());
+
+    attr.mq_maxmsg  = MQ_MAX_MESSAGES;
+    attr.mq_msgsize = sizeof (MQ_REQUEST_MESSAGE);
+    mq_fd_request = mq_open (mq_request, O_WRONLY | O_CREAT | O_EXCL, 0600, &attr);
+
+    attr.mq_maxmsg  = MQ_MAX_MESSAGES;
+    attr.mq_msgsize = sizeof (MQ_RESPONSE_MESSAGE);
+    mq_fd_response = mq_open (mq_response, O_RDONLY | O_CREAT | O_EXCL, 0600, &attr);
+}
 
 int main (int argc, char * argv[])
 {
@@ -39,6 +61,8 @@ int main (int argc, char * argv[])
     //  * do the farming
     //  * wait until the chilren have been stopped (see process_test())
     //  * clean up the message queues (see message_queue_test())
+
+    create_msg_queue();
 
     // Important notice: make sure that the names of the message queues contain your
     // student name and the process id (to ensure uniqueness during testing)
