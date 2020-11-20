@@ -25,10 +25,22 @@
 #include "settings.h"
 #include "common.h"
 
-static char mq_request[80];
-static char mq_response[80];
+static char mq_request[80] = "req" + STUDENTNAME + getpid();
+static char mq_response[80] = "res" + STUDENTNAME + getpid();
 
-static void create_msg_queue() {
+int main (int argc, char * argv[])
+{
+    if (argc != 1)
+    {
+        fprintf (stderr, "%s: invalid arguments\n", argv[0]);
+    }
+        
+    // TODO:
+    //  * create the message queues (see message_queue_test() in interprocess_basic.c)
+    //  * create the child processes (see process_test() and message_queue_test())
+    //  * do the farming
+    //  * wait until the chilren have been stopped (see process_test())
+    //  * clean up the message queues (see message_queue_test())
     pid_t               processID;      /* Process ID from fork() */
     mqd_t               mq_fd_request;
     mqd_t               mq_fd_response;
@@ -46,25 +58,30 @@ static void create_msg_queue() {
     attr.mq_maxmsg  = MQ_MAX_MESSAGES;
     attr.mq_msgsize = sizeof (MQ_RESPONSE_MESSAGE);
     mq_fd_response = mq_open (mq_response, O_RDONLY | O_CREAT | O_EXCL, 0600, &attr);
-}
 
-int main (int argc, char * argv[])
-{
-    if (argc != 1)
+    // Generate child processes
+    int i;
+    for (i = 0; i < NROF_WORKERS; ++i) {
+        processID = fork();
+        // Prevent from looping when a child process is created.
+        if (processID == 0) {
+            break;
+        }
+    }
+
+    if (processID == 0)
     {
-        fprintf (stderr, "%s: invalid arguments\n", argv[0]);
+            //start worker
+            execlp("worker", arg0, arg1, NULL);
+            exit (0);
+    }else{
+            //fill queue
+            
+
     }
         
-    // TODO:
-    //  * create the message queues (see message_queue_test() in interprocess_basic.c)
-    //  * create the child processes (see process_test() and message_queue_test())
-    //  * do the farming
-    //  * wait until the chilren have been stopped (see process_test())
-    //  * clean up the message queues (see message_queue_test())
 
-    create_msg_queue();
-
-    // Important notice: make sure that the names of the message queues contain your
+    
     // student name and the process id (to ensure uniqueness during testing)
     
     return (0);
