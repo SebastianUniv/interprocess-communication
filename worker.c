@@ -26,6 +26,8 @@
 
 static void rsleep (int t);
 
+static char *mq_request;
+static char *mq_response;
 
 int main (int argc, char * argv[])
 {
@@ -39,6 +41,35 @@ int main (int argc, char * argv[])
     //      - write the results to a message queue
     //    until there are no more tasks to do
     //  * close the message queues
+
+    if (argc < 2) {
+        fprintf (stderr, "Invalid arguments\n");
+        return (-1);
+    }
+
+    int working = 1;
+    mqd_t               mq_fd_request;
+    mqd_t               mq_fd_response;
+    MQ_REQUEST_MESSAGE  req;
+    MQ_RESPONSE_MESSAGE rsp;
+
+    printf("Worker started\n");
+
+    // Get parameters from parent process
+    mq_request = argv[0];
+    mq_response = argv[1];
+
+    // Open queues
+    mq_fd_request = mq_open(mq_request, O_RDONLY);
+    mq_fd_response = mq_open(mq_response, O_WRONLY);
+
+    while (working) {
+        // Receive message from farmer (blocking)
+        mq_receive(mq_fd_request, (char *) &req, sizeof(MQ_REQUEST_MESSAGE), NULL);
+        
+        // Send message to farmer (blocking)
+        mq_send(mq_fd_response, (const char *) &rsp, sizeof(MQ_RESPONSE_MESSAGE), 0);
+    }
     
     return (0);
 }

@@ -25,8 +25,8 @@
 #include "settings.h"
 #include "common.h"
 
-static char mq_request[80] = "req" + STUDENTNAME + getpid();
-static char mq_response[80] = "res" + STUDENTNAME + getpid();
+static char mq_request[80];
+static char mq_response[80];
 
 int main (int argc, char * argv[])
 {
@@ -48,8 +48,9 @@ int main (int argc, char * argv[])
     MQ_RESPONSE_MESSAGE rsp;
     struct mq_attr      attr;
 
-    //sprintf (mq_request, "/mq_request_%s_%d", STUDENT_NAME, getpid());
-    //sprintf (mq_response, "/mq_response_%s_%d", STUDENT_NAME, getpid());
+    // Set names of the queues
+    snprintf(mq_request, 80,"/mq_request_%s_%d", STUDENT_NAME, getpid());
+    snprintf(mq_response, 80,"/mq_response_%s_%d", STUDENT_NAME, getpid());
 
     attr.mq_maxmsg  = MQ_MAX_MESSAGES;
     attr.mq_msgsize = sizeof (MQ_REQUEST_MESSAGE);
@@ -71,12 +72,46 @@ int main (int argc, char * argv[])
 
     if (processID == 0)
     {
-            //start worker
-            execlp("worker", arg0, arg1, NULL);
-            exit (0);
-    }else{
-            //fill queue
-            
+        //start worker
+        execlp("./worker", mq_request, mq_response, (char *) NULL);
+        exit (0);
+    }else {
+        // Send message to worker
+        mq_send(mq_fd_request, (const char *) &req, sizeof(MQ_REQUEST_MESSAGE), 0); 
+        // Receive message from worker
+        mq_receive(mq_fd_response, (char *) &rsp, sizeof(MQ_RESPONSE_MESSAGE), NULL);
+
+        //fill queue
+        char alfabet[27] = "abcdefghijklmnopqrstuvwxyz";
+        int busy = 1;
+        int mod = ALPHABET_END_CHAR - ALPHABET_START_CHAR + 1;
+        int current = 1;
+
+        while(busy){
+            //create new job and put job on queue
+            char newWord[MAX_MESSAGE_LENGTH];
+            int wordLength = 1;
+            int q = current;
+            int r = 0;
+
+            while(q > 0){
+                r = q % mod;
+                q = q / mod;
+                newWord[wordLength - 1] = alfabet[r-1];
+                wordLength++;
+            }
+
+            current++;
+
+            //the job to be send to the worker
+            char job[wordLength];
+            for(int i = 0; i < wordLength; i++){
+                job[i] = newWord[wordLength - i - 1];
+            }
+
+
+            //remove completed job from farmer queue
+        }
 
     }
         
