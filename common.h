@@ -18,20 +18,23 @@
 
 #define STUDENT_NAME "RobbenGerritsen"
 
+
 typedef struct
 {
-    // a data structure with 3 members
-    int                     a;
-    int                     b;
-    char                    c;
+    // a data structure with 2 members
+    uint128_t               hash;    
+    char                    start;
+    int                     startAlfa;
+    int                     endAlfa;
+    int                     id;
 } MQ_REQUEST_MESSAGE;
 
 typedef struct
 {
-    // a data structure with 3 members
-    int                     e;
-    char                    f[20];
-    char                    g[20];
+    // a data structure with 2 members    
+    char                    word[MAX_MESSAGE_LENGTH];    
+    int                     id;
+    int                     lenght;
 } MQ_RESPONSE_MESSAGE;
 
 #endif

@@ -82,35 +82,45 @@ int main (int argc, char * argv[])
         mq_receive(mq_fd_response, (char *) &rsp, sizeof(MQ_RESPONSE_MESSAGE), NULL);
 
         //fill queue
-        char alfabet[27] = "abcdefghijklmnopqrstuvwxyz";
         int busy = 1;
-        int mod = ALPHABET_END_CHAR - ALPHABET_START_CHAR + 1;
-        int current = 1;
+        int start = (int) ALPHABET_START_CHAR;
+        int end = (int) ALPHABET_END_CHAR;
+        int currentChar = start;
+        int currentHash = 0;
 
         while(busy){
-            //create new job and put job on queue
-            char newWord[MAX_MESSAGE_LENGTH];
-            int wordLength = 1;
-            int q = current;
-            int r = 0;
+            //Try place job on the queue            
+            mq_getattr(mq_fd_request, &attr);
+            
+            if(attr.mq_curmsgs < MQ_MAX_MESSAGES){
+                req.hash = UINT128(HI(md5_list[currentHash]),LO(md5_list[currentHash]));
+                req.start = (char) currentChar;
+                req.startAlfa = start;
+                req.endAlfa = end;
+                req.id = currentHash;
+                mq_send(mq_fd_request, (const char *) &req, sizeof(MQ_REQUEST_MESSAGE), 0);
 
-            while(q > 0){
-                r = q % mod;
-                q = q / mod;
-                newWord[wordLength - 1] = alfabet[r-1];
-                wordLength++;
+                if(currentChar == end){
+                   currentHash++;
+                   currentChar = start;
+                }else{
+                    currentChar++; 
+                }
+            }   
+
+            //Pull and print received messages
+            mq_receive (mq_fd_response, (char *) &rsp, sizeof (rsp), NULL);
+            printf("%s/n", rsp.word);   //might have to "trim" string first
+
+            if(rsp.id == currentHash){
+                currentHash++;
+                currentChar = 0;
             }
 
-            current++;
-
-            //the job to be send to the worker
-            char job[wordLength];
-            for(int i = 0; i < wordLength; i++){
-                job[i] = newWord[wordLength - i - 1];
-            }
-
-
-            //remove completed job from farmer queue
+            if(currentHash > MD5_LIST_NROF - 1){
+                busy = 0;
+            }          
+            
         }
 
     }
