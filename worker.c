@@ -24,6 +24,8 @@
 #include "common.h"
 #include "md5s.h"
 
+#include <math.h>
+
 static void rsleep (int t);
 
 static char *mq_request;
@@ -63,12 +65,42 @@ int main (int argc, char * argv[])
     mq_fd_request = mq_open(mq_request, O_RDONLY);
     mq_fd_response = mq_open(mq_response, O_WRONLY);
 
+
+
     while (working) {
         // Receive message from farmer (blocking)
         mq_receive(mq_fd_request, (char *) &req, sizeof(MQ_REQUEST_MESSAGE), NULL);
+
+        int wordLength = 1;
+        char word[MAX_MESSAGE_LENGTH];
+
+        //////////////////loop/////////////////////////////////////////////////// 
+        //format new word
+        int tryingHash = 1;
+        while(tryingHash){
+
+            //trim word
+            char finalWord[wordLength];
+            for(int i = 0; i < wordLength; i++){
+                finalWord[i] = word[i];
         
-        // Send message to farmer (blocking)
-        mq_send(mq_fd_response, (const char *) &rsp, sizeof(MQ_RESPONSE_MESSAGE), 0);
+            }
+
+            //compare hash
+            uint128_t new_hash;
+            new_hash = md5s(finalWord, wordLength);
+
+            if(new_hash == req.hash){
+                // Send message to farmer if matching hash found, else pick new reqest message (blocking)
+                for(int i = 0; i < wordLength; i++){
+                    rsp.word[i] = finalWord[i];        
+                }
+                rsp.id = req.id;
+                rsp.lenght = wordLength;
+                mq_send(mq_fd_response, (const char *) &rsp, sizeof(MQ_RESPONSE_MESSAGE), 0);
+            }
+        }
+        //////////////////////////loop end////////////////////////////////
     }
     
     return (0);
