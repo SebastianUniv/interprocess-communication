@@ -18,6 +18,7 @@
 
 #define STUDENT_NAME "RobbenGerritsen"
 
+typedef unsigned __int128 uint128_t;
 
 typedef struct
 {
@@ -34,7 +35,7 @@ typedef struct
     // a data structure with 2 members    
     char                    word[MAX_MESSAGE_LENGTH];    
     int                     id;
-    int                     lenght;
+    int                     length;
 } MQ_RESPONSE_MESSAGE;
 
 #endif

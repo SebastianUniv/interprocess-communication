@@ -77,28 +77,36 @@ int main (int argc, char * argv[])
         exit (0);
     }else {
         // Send message to worker
-        mq_send(mq_fd_request, (const char *) &req, sizeof(MQ_REQUEST_MESSAGE), 0); 
+        //mq_send(mq_fd_request, (const char *) &req, sizeof(MQ_REQUEST_MESSAGE), 0); 
         // Receive message from worker
-        mq_receive(mq_fd_response, (char *) &rsp, sizeof(MQ_RESPONSE_MESSAGE), NULL);
+        //mq_receive(mq_fd_response, (char *) &rsp, sizeof(MQ_RESPONSE_MESSAGE), NULL);
 
         //fill queue
         int busy = 1;
         int start = (int) ALPHABET_START_CHAR;
+        //start = (int) 'd';
         int end = (int) ALPHABET_END_CHAR;
         int currentChar = start;
         int currentHash = 0;
 
         while(busy){
-            //Try place job on the queue            
-            mq_getattr(mq_fd_request, &attr);
+            //Try place job on the queue      
+            struct mq_attr      attr_queue;      
+            int                 rtnval;
+
+            rtnval = mq_getattr(mq_fd_request, &attr_queue);
             
-            if(attr.mq_curmsgs < MQ_MAX_MESSAGES){
+            //printf("number of messages: %d\n", (int) attr_queue.mq_curmsgs);
+
+            if(attr_queue.mq_curmsgs < MQ_MAX_MESSAGES){
                 req.hash = UINT128(HI(md5_list[currentHash]),LO(md5_list[currentHash]));
                 req.start = (char) currentChar;
                 req.startAlfa = start;
                 req.endAlfa = end;
-                req.id = currentHash;
+                req.id = currentHash;                
                 mq_send(mq_fd_request, (const char *) &req, sizeof(MQ_REQUEST_MESSAGE), 0);
+                //printf ("0x%016lx%016lx\n", HI(req.hash), LO(req.hash ));
+                //printf ("sending: %d\n", req.id);
 
                 if(currentChar == end){
                    currentHash++;
@@ -109,17 +117,40 @@ int main (int argc, char * argv[])
             }   
 
             //Pull and print received messages
-            mq_receive (mq_fd_response, (char *) &rsp, sizeof (rsp), NULL);
-            printf("%s/n", rsp.word);   //might have to "trim" string first
 
-            if(rsp.id == currentHash){
-                currentHash++;
-                currentChar = 0;
+            //mq_getattr(mq_fd_response, &attr);
+            
+            //printf("number of messages: %d\n", attr.mq_curmsgs);
+
+            mq_getattr(mq_fd_response, &attr_queue);
+            //printf("number of messages: %d\n", (int) attr_queue.mq_curmsgs);
+
+            if(attr_queue.mq_curmsgs > 0){
+                //make sure message queue does not get overloaded
+                mq_receive (mq_fd_response, (char *) &rsp, sizeof (rsp), NULL);
+                //printf("length: %d\n", rsp.length);
+                int length = rsp.length;
+                char finalWord[length+1];
+                for(int i = 0; i < rsp.length; i++){
+                    finalWord[i] = rsp.word[i];
+                }
+                finalWord[length] = '\0';
+
+
+
+                printf("%s\n", finalWord);   //might have to "trim" string first
+                //printf("%d\n", rsp.id);
+
+            
+                if(rsp.id == currentHash){
+                    //currentHash++;
+                    //currentChar = start;
+                }
+
+                if(currentHash > MD5_LIST_NROF){
+                    busy = 0;
+                } 
             }
-
-            if(currentHash > MD5_LIST_NROF - 1){
-                busy = 0;
-            }          
             
         }
 

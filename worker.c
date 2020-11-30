@@ -55,7 +55,7 @@ int main (int argc, char * argv[])
     MQ_REQUEST_MESSAGE  req;
     MQ_RESPONSE_MESSAGE rsp;
 
-    printf("Worker started\n");
+    //printf("Worker started\n");
 
     // Get parameters from parent process
     mq_request = argv[0];
@@ -70,37 +70,92 @@ int main (int argc, char * argv[])
     while (working) {
         // Receive message from farmer (blocking)
         mq_receive(mq_fd_request, (char *) &req, sizeof(MQ_REQUEST_MESSAGE), NULL);
-
-        int wordLength = 1;
-        char word[MAX_MESSAGE_LENGTH];
+        char start = (char) req.startAlfa;
+        char end = (char) req.endAlfa;
+        //printf ("0x%016lx%016lx\n", HI(req.hash), LO(req.hash ));
+        //int request = req.id;
+        //printf("%d\n", request);
+        //printf("start: %c\n",req.start);
+        //int wordLength = 1;
+        char word[MAX_MESSAGE_LENGTH - 1];
+        for(int i = 0; i < MAX_MESSAGE_LENGTH -1; i++){
+            word[i] = start;
+        }   
 
         //////////////////loop/////////////////////////////////////////////////// 
-        //format new word
-        int tryingHash = 1;
-        while(tryingHash){
-
-            //trim word
-            char finalWord[wordLength];
-            for(int i = 0; i < wordLength; i++){
-                finalWord[i] = word[i];
         
+        int tryingHash = 1;
+        int currentLength = 0;
+        while(tryingHash){
+            //sleep(1);
+
+            //trim word            
+            char finalWord[currentLength + 2];
+            finalWord[0] = req.start;
+            for(int i = 1; i < currentLength + 1; i++){
+                finalWord[i] = word[i - 1];
+        
+            }           
+            finalWord[currentLength + 1] = '\0';
+
+            /*
+            printf("length: %d\n", currentLength);
+            for(int m = 0; m < currentLength + 1; m++){
+                printf("word: ");
+                printf("%c",finalWord[m]);
+                printf("\n");
             }
+            */
+            
+
+            //printf("Trying word: %s\n", finalWord);
 
             //compare hash
             uint128_t new_hash;
-            new_hash = md5s(finalWord, wordLength);
+            new_hash = md5s(finalWord, currentLength + 1);            
 
             if(new_hash == req.hash){
                 // Send message to farmer if matching hash found, else pick new reqest message (blocking)
-                for(int i = 0; i < wordLength; i++){
-                    rsp.word[i] = finalWord[i];        
+                //printf("found match\n",0);
+                for(int i = 0; i < currentLength + 1; i++){
+                    rsp.word[i] = finalWord[i];                            
                 }
                 rsp.id = req.id;
-                rsp.lenght = wordLength;
+                rsp.length = currentLength + 1;
+                  
+
+
                 mq_send(mq_fd_response, (const char *) &rsp, sizeof(MQ_RESPONSE_MESSAGE), 0);
+                tryingHash = 0;
+                break;
+            }
+
+            if(currentLength == 0){
+                currentLength++;
+            }
+
+            //format new word        
+            for(int i = currentLength - 1; i >= 0; i--){
+                if((int) word[i] < (int) end ){
+                    word[i] = (char) ((int) word[i] + 1);
+                    break;
+                } else if((int) word[i] == (int) end){
+                    word[i] = start;
+                }
+            
+                if((int) word[0] == (int) start && i == 0){
+                    currentLength++;
+                    break;
+                }
+            }
+
+            if(currentLength + 1 > MAX_MESSAGE_LENGTH){
+                tryingHash = 0;
+                break;
             }
         }
         //////////////////////////loop end////////////////////////////////
+        //break;
     }
     
     return (0);
